@@ -1,146 +1,214 @@
-"""CLI скрипт для active learning loop (Expert-Loop v1)."""
+"""CLI script for active learning loop (Expert-Loop v1)."""
 
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
-from src.config import (
-    ActiveLoopConfig,
-    DatasetConfig,
-    ExperimentConfig,
-    KDConfig,
-    ModelConfig,
-    TrainingConfig,
-)
-from src.models.student import StudentModel
-from src.models.teachers import TeacherEnsemble
-from src.training.active_loop import ActiveLoopTrainer
-from src.utils import save_config, set_seed
+from src.config import default_medqa_experiment
+from src.training.active_loop import ActiveLoopExperiment
+from src.utils import set_seed
 
 
 def parse_args() -> argparse.Namespace:
-    """Парсит аргументы командной строки."""
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Active learning loop experiment (v1)"
     )
     
-    # Dataset arguments
-    parser.add_argument("--dataset_name", type=str, required=True)
-    parser.add_argument("--text_column", type=str, default="text")
-    parser.add_argument("--label_column", type=str, default="label")
-    parser.add_argument("--max_length", type=int, default=512)
+    # Experiment arguments
+    parser.add_argument(
+        "--experiment_name",
+        type=str,
+        default="active_loop_v1",
+        help="Name of the experiment",
+    )
     
-    # Model arguments
-    parser.add_argument("--student_model_name", type=str, required=True)
-    parser.add_argument("--teacher_model_names", type=str, nargs="+", required=True)
-    parser.add_argument("--num_labels", type=int, default=2)
+    # Dataset arguments (optional, will use defaults if not provided)
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        default=None,
+        help="Dataset name (default: medmcqa)",
+    )
     
-    # Training arguments
-    parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--learning_rate", type=float, default=2e-5)
-    parser.add_argument("--num_epochs", type=int, default=3)
-    parser.add_argument("--output_dir", type=str, default="outputs/checkpoints")
-    parser.add_argument("--experiment_name", type=str, required=True)
+    # Model arguments (optional)
+    parser.add_argument(
+        "--student_model_name",
+        type=str,
+        default=None,
+        help="Student model name (default: distilbert-base-uncased)",
+    )
+    parser.add_argument(
+        "--teacher_model_names",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Teacher model names (default: bert-base-uncased roberta-base)",
+    )
     
-    # KD arguments
-    parser.add_argument("--temperature", type=float, default=4.0)
-    parser.add_argument("--alpha", type=float, default=0.7)
-    parser.add_argument("--ensemble_method", type=str, default="mean")
+    # Training arguments (optional)
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=None,
+        help="Batch size (default: 16)",
+    )
+    parser.add_argument(
+        "--learning_rate",
+        type=float,
+        default=None,
+        help="Learning rate (default: 2e-5)",
+    )
+    parser.add_argument(
+        "--num_epochs",
+        type=int,
+        default=None,
+        help="Number of epochs (default: 3)",
+    )
     
-    # Active loop arguments
-    parser.add_argument("--initial_pool_size", type=int, default=100)
-    parser.add_argument("--query_size", type=int, default=50)
-    parser.add_argument("--query_strategy", type=str, default="uncertainty")
-    parser.add_argument("--max_iterations", type=int, default=1)
+    # KD arguments (optional)
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=None,
+        help="Temperature for distillation (default: 4.0)",
+    )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=None,
+        help="Alpha weight for KD loss (default: 0.7)",
+    )
+    
+    # Active loop arguments (optional)
+    parser.add_argument(
+        "--unlabeled_pool_size",
+        type=int,
+        default=None,
+        help="Size of unlabeled pool (default: 1000)",
+    )
+    parser.add_argument(
+        "--top_k_uncertain",
+        type=int,
+        default=None,
+        help="Number of most uncertain examples to select (default: 50)",
+    )
+    parser.add_argument(
+        "--uncertainty_metric",
+        type=str,
+        choices=["entropy", "margin"],
+        default=None,
+        help="Uncertainty metric (default: entropy)",
+    )
     
     # Other arguments
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed (default: 42)",
+    )
     
     return parser.parse_args()
 
 
-def create_config(args: argparse.Namespace) -> ExperimentConfig:
-    """Создает конфигурацию эксперимента из аргументов."""
-    dataset_config = DatasetConfig(
-        dataset_name=args.dataset_name,
-        text_column=args.text_column,
-        label_column=args.label_column,
-        max_length=args.max_length,
-        seed=args.seed,
-    )
+def main() -> None:
+    """Main function to run active learning loop."""
+    args = parse_args()
     
-    model_config = ModelConfig(
-        student_model_name=args.student_model_name,
-        teacher_model_names=args.teacher_model_names,
-        num_labels=args.num_labels,
-    )
-    
-    training_config = TrainingConfig(
-        batch_size=args.batch_size,
-        learning_rate=args.learning_rate,
-        num_epochs=args.num_epochs,
-        output_dir=args.output_dir,
-        seed=args.seed,
-    )
-    
-    kd_config = KDConfig(
-        temperature=args.temperature,
-        alpha=args.alpha,
-        ensemble_method=args.ensemble_method,
-    )
-    
-    active_loop_config = ActiveLoopConfig(
-        initial_pool_size=args.initial_pool_size,
-        query_size=args.query_size,
-        query_strategy=args.query_strategy,
-        max_iterations=args.max_iterations,
-    )
-    
-    experiment_config = ExperimentConfig(
+    # Create default config
+    config = default_medqa_experiment(
         experiment_name=args.experiment_name,
         experiment_type="active_loop",
-        dataset=dataset_config,
-        model=model_config,
-        training=training_config,
-        kd=kd_config,
-        active_loop=active_loop_config,
     )
     
-    experiment_config.validate()
-    return experiment_config
-
-
-def main() -> None:
-    """Главная функция для запуска active learning loop."""
-    args = parse_args()
-    config = create_config(args)
+    # Override with CLI arguments if provided
+    if args.dataset_name is not None:
+        config.dataset.dataset_name = args.dataset_name
     
-    # Устанавливаем seed
+    if args.student_model_name is not None:
+        config.model.student_model_name = args.student_model_name
+    
+    if args.teacher_model_names is not None:
+        config.model.teacher_model_names = args.teacher_model_names
+    
+    if args.batch_size is not None:
+        config.training.batch_size = args.batch_size
+    
+    if args.learning_rate is not None:
+        config.training.learning_rate = args.learning_rate
+    
+    if args.num_epochs is not None:
+        config.training.num_epochs = args.num_epochs
+    
+    if args.temperature is not None:
+        if config.kd is None:
+            raise ValueError("KDConfig is required for active loop experiment")
+        config.kd.temperature = args.temperature
+    
+    if args.alpha is not None:
+        if config.kd is None:
+            raise ValueError("KDConfig is required for active loop experiment")
+        config.kd.alpha = args.alpha
+    
+    if args.unlabeled_pool_size is not None:
+        if config.active is None:
+            raise ValueError("ActiveLoopConfig is required for active loop experiment")
+        config.active.unlabeled_pool_size = args.unlabeled_pool_size
+    
+    if args.top_k_uncertain is not None:
+        if config.active is None:
+            raise ValueError("ActiveLoopConfig is required for active loop experiment")
+        config.active.top_k_uncertain = args.top_k_uncertain
+    
+    if args.uncertainty_metric is not None:
+        if config.active is None:
+            raise ValueError("ActiveLoopConfig is required for active loop experiment")
+        config.active.uncertainty_metric = args.uncertainty_metric
+    
+    config.training.seed = args.seed
+    config.dataset.seed = args.seed
+    
+    # Validate config
+    config.validate()
+    
+    # Set seed
     set_seed(config.training.seed)
     
-    # Создаем директорию для вывода
-    output_dir = Path(config.training.output_dir) / config.experiment_name
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Create experiment
+    experiment = ActiveLoopExperiment(config)
     
-    # Сохраняем конфигурацию
-    save_config(config, output_dir / "config.json")
+    # Train
+    experiment.train()
     
-    # Загружаем датасет
-    # TODO: Реализовать загрузку и обработку датасета
+    # Evaluate
+    final_metrics = experiment.evaluate()
     
-    # Создаем модели
-    student_model = StudentModel(config.model)
-    teacher_ensemble = TeacherEnsemble(config.model, config.kd)
+    # Print final metrics
+    print("\n" + "=" * 60)
+    print("Final Evaluation Metrics (Active Loop v1):")
+    print("=" * 60)
     
-    # Создаем тренер
-    trainer = ActiveLoopTrainer(config, student_model, teacher_ensemble)
+    # Print baseline metrics if available
+    if experiment.baseline_metrics:
+        print("\nBaseline (Student_v0) Metrics:")
+        for metric_name, metric_value in experiment.baseline_metrics.items():
+            print(f"  {metric_name}: {metric_value:.4f}")
     
-    # Запускаем active learning цикл
-    # TODO: Реализовать active learning цикл
-    print(f"Запуск active learning loop для эксперимента: {config.experiment_name}")
+    print("\nFinal (Student_v1) Metrics:")
+    for metric_name, metric_value in final_metrics.items():
+        print(f"  {metric_name}: {metric_value:.4f}")
+    
+    print("\n" + "=" * 60)
+    print("Configuration:")
+    print(f"  Uncertainty metric: {config.active.uncertainty_metric}")
+    print(f"  Top-K uncertain: {config.active.top_k_uncertain}")
+    print(f"  Unlabeled pool size: {config.active.unlabeled_pool_size}")
+    print(f"  KD Temperature: {config.kd.temperature}")
+    print(f"  KD Alpha: {config.kd.alpha}")
+    print(f"  Teacher models: {config.model.teacher_model_names}")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
     main()
-
