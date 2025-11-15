@@ -1,4 +1,4 @@
-"""Цикл knowledge distillation."""
+"""Knowledge distillation training loop."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from src.utils import setup_logging
 
 
 class DistillationTrainer:
-    """Тренер для knowledge distillation."""
+    """Trainer for knowledge distillation."""
     
     def __init__(
         self,
@@ -22,11 +22,11 @@ class DistillationTrainer:
         teacher_ensemble: TeacherEnsemble,
     ) -> None:
         """
-        Инициализирует тренер для distillation.
+        Initialize trainer for distillation.
         
         Args:
-            config: Конфигурация эксперимента
-            student_model: Student модель
+            config: Experiment configuration
+            student_model: Student model
             teacher_ensemble: Teacher ensemble
         """
         self.config = config
@@ -36,7 +36,7 @@ class DistillationTrainer:
             log_dir="outputs/logs",
             experiment_name=config.experiment_name,
         )
-        self.device = torch.device(config.device)
+        self.device = torch.device(config.model.device)
         self.student_model.to(self.device)
         self.teacher_ensemble.to(self.device)
     
@@ -46,16 +46,16 @@ class DistillationTrainer:
         val_loader: DataLoader | None = None,
     ) -> dict[str, list[float]]:
         """
-        Обучает student модель через distillation.
+        Train student model through distillation.
         
         Args:
-            train_loader: DataLoader для обучения
-            val_loader: DataLoader для валидации (опционально)
+            train_loader: DataLoader for training
+            val_loader: DataLoader for validation (optional)
         
         Returns:
-            Словарь с историей метрик
+            Dictionary with metrics history
         """
-        # TODO: Реализовать цикл distillation обучения
+        # TODO: Implement distillation training loop
         pass
     
     def compute_distillation_loss(
@@ -65,17 +65,17 @@ class DistillationTrainer:
         hard_labels: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
-        Вычисляет loss для distillation.
+        Compute loss for distillation.
         
         Args:
-            student_logits: Logits от student модели
-            teacher_logits: Logits от teacher ensemble
-            hard_labels: Жесткие метки (опционально)
+            student_logits: Logits from student model
+            teacher_logits: Logits from teacher ensemble
+            hard_labels: Hard labels (optional)
         
         Returns:
-            Loss значение
+            Loss value
         """
-        # TODO: Реализовать вычисление distillation loss
+        # TODO: Implement distillation loss computation
         pass
     
     def train_epoch(
@@ -83,15 +83,15 @@ class DistillationTrainer:
         train_loader: DataLoader,
     ) -> dict[str, float]:
         """
-        Обучает модель на одной эпохе.
+        Train the model for one epoch.
         
         Args:
-            train_loader: DataLoader для обучения
+            train_loader: DataLoader for training
         
         Returns:
-            Словарь с метриками эпохи
+            Dictionary with epoch metrics
         """
-        # TODO: Реализовать обучение на одной эпохе
+        # TODO: Implement one epoch training
         pass
     
     def evaluate(
@@ -99,14 +99,13 @@ class DistillationTrainer:
         val_loader: DataLoader,
     ) -> dict[str, float]:
         """
-        Оценивает модель на validation set.
+        Evaluate the model on validation set.
         
         Args:
-            val_loader: DataLoader для валидации
+            val_loader: DataLoader for validation
         
         Returns:
-            Словарь с метриками
+            Dictionary with metrics
         """
-        # TODO: Реализовать оценку модели
+        # TODO: Implement model evaluation
         pass
-

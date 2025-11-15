@@ -1,4 +1,4 @@
-"""Общие утилиты и вспомогательные функции."""
+"""Common utilities and helper functions."""
 
 from __future__ import annotations
 
@@ -17,16 +17,16 @@ def setup_logging(
     experiment_name: str,
 ) -> logging.Logger:
     """
-    Настраивает логирование для эксперимента.
+    Setup logging for an experiment.
     
     Args:
-        log_dir: Директория для логов
-        experiment_name: Имя эксперимента
+        log_dir: Directory for logs
+        experiment_name: Experiment name
     
     Returns:
-        Настроенный logger
+        Configured logger
     """
-    # TODO: Реализовать настройку логирования
+    # TODO: Implement logging setup
     pass
 
 
@@ -35,13 +35,13 @@ def save_config(
     output_path: Path,
 ) -> None:
     """
-    Сохраняет конфигурацию эксперимента в JSON.
+    Save experiment configuration to JSON.
     
     Args:
-        config: Конфигурация эксперимента
-        output_path: Путь для сохранения
+        config: Experiment configuration
+        output_path: Path for saving
     """
-    # TODO: Реализовать сохранение конфигурации
+    # TODO: Implement config saving
     pass
 
 
@@ -49,15 +49,15 @@ def load_config(
     config_path: Path,
 ) -> ExperimentConfig:
     """
-    Загружает конфигурацию эксперимента из JSON.
+    Load experiment configuration from JSON.
     
     Args:
-        config_path: Путь к файлу конфигурации
+        config_path: Path to configuration file
     
     Returns:
-        Загруженная конфигурация
+        Loaded configuration
     """
-    # TODO: Реализовать загрузку конфигурации
+    # TODO: Implement config loading
     pass
 
 
@@ -67,14 +67,14 @@ def save_model(
     config: ExperimentConfig,
 ) -> None:
     """
-    Сохраняет модель и конфигурацию.
+    Save model and configuration.
     
     Args:
-        model: Модель для сохранения
-        output_path: Путь для сохранения
-        config: Конфигурация эксперимента
+        model: Model to save
+        output_path: Path for saving
+        config: Experiment configuration
     """
-    # TODO: Реализовать сохранение модели
+    # TODO: Implement model saving
     pass
 
 
@@ -83,26 +83,25 @@ def load_model(
     config: ExperimentConfig,
 ) -> torch.nn.Module:
     """
-    Загружает модель из чекпоинта.
+    Load model from checkpoint.
     
     Args:
-        model_path: Путь к чекпоинту
-        config: Конфигурация эксперимента
+        model_path: Path to checkpoint
+        config: Experiment configuration
     
     Returns:
-        Загруженная модель
+        Loaded model
     """
-    # TODO: Реализовать загрузку модели
+    # TODO: Implement model loading
     pass
 
 
 def set_seed(seed: int) -> None:
     """
-    Устанавливает seed для воспроизводимости.
+    Set seed for reproducibility.
     
     Args:
-        seed: Значение seed
+        seed: Seed value
     """
-    # TODO: Реализовать установку seed
+    # TODO: Implement seed setting
     pass
-

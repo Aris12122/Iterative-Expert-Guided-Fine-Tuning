@@ -1,4 +1,4 @@
-"""Цикл active learning с distillation."""
+"""Active learning loop with distillation."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from src.utils import setup_logging
 
 
 class ActiveLoopTrainer:
-    """Тренер для active learning цикла с distillation."""
+    """Trainer for active learning loop with distillation."""
     
     def __init__(
         self,
@@ -23,11 +23,11 @@ class ActiveLoopTrainer:
         teacher_ensemble: TeacherEnsemble,
     ) -> None:
         """
-        Инициализирует тренер для active loop.
+        Initialize trainer for active loop.
         
         Args:
-            config: Конфигурация эксперимента
-            student_model: Student модель
+            config: Experiment configuration
+            student_model: Student model
             teacher_ensemble: Teacher ensemble
         """
         self.config = config
@@ -37,11 +37,11 @@ class ActiveLoopTrainer:
             log_dir="outputs/logs",
             experiment_name=config.experiment_name,
         )
-        self.device = torch.device(config.device)
+        self.device = torch.device(config.model.device)
         
-        if config.active_loop is None:
-            raise ValueError("ActiveLoopConfig требуется для ActiveLoopTrainer")
-        self.active_config = config.active_loop
+        if config.active is None:
+            raise ValueError("ActiveLoopConfig is required for ActiveLoopTrainer")
+        self.active_config = config.active
     
     def run_active_loop(
         self,
@@ -49,21 +49,21 @@ class ActiveLoopTrainer:
         val_loader: DataLoader | None = None,
     ) -> dict[str, list[float]]:
         """
-        Запускает active learning цикл.
+        Run active learning loop.
         
         Args:
-            train_dataset: Полный тренировочный датасет
-            val_loader: DataLoader для валидации (опционально)
+            train_dataset: Full training dataset
+            val_loader: DataLoader for validation (optional)
         
         Returns:
-            Словарь с историей метрик
+            Dictionary with metrics history
         """
-        # TODO: Реализовать active learning цикл
-        # 1. Создать начальный пул
-        # 2. Обучить teacher ensemble на начальном пуле
-        # 3. Вычислить uncertainty на оставшихся примерах
-        # 4. Выбрать примеры для запроса
-        # 5. Обучить student через distillation на расширенном пуле
+        # TODO: Implement active learning loop
+        # 1. Create initial pool
+        # 2. Train teacher ensemble on initial pool
+        # 3. Compute uncertainty on remaining examples
+        # 4. Select examples for query
+        # 5. Train student through distillation on expanded pool
         pass
     
     def create_initial_pool(
@@ -71,15 +71,15 @@ class ActiveLoopTrainer:
         dataset: torch.utils.data.Dataset,
     ) -> Subset:
         """
-        Создает начальный пул примеров.
+        Create initial pool of examples.
         
         Args:
-            dataset: Полный датасет
+            dataset: Full dataset
         
         Returns:
-            Subset с начальным пулом
+            Subset with initial pool
         """
-        # TODO: Реализовать создание начального пула
+        # TODO: Implement initial pool creation
         pass
     
     def query_examples(
@@ -88,16 +88,16 @@ class ActiveLoopTrainer:
         query_size: int,
     ) -> list[int]:
         """
-        Выбирает примеры для запроса на основе uncertainty.
+        Select examples for query based on uncertainty.
         
         Args:
-            unlabeled_dataset: Датасет с непомеченными примерами
-            query_size: Количество примеров для запроса
+            unlabeled_dataset: Dataset with unlabeled examples
+            query_size: Number of examples to query
         
         Returns:
-            Список индексов выбранных примеров
+            List of indices of selected examples
         """
-        # TODO: Реализовать стратегию запроса примеров
+        # TODO: Implement example query strategy
         pass
     
     def compute_uncertainty_scores(
@@ -105,14 +105,13 @@ class ActiveLoopTrainer:
         dataset: torch.utils.data.Dataset,
     ) -> torch.Tensor:
         """
-        Вычисляет uncertainty scores для всех примеров.
+        Compute uncertainty scores for all examples.
         
         Args:
-            dataset: Датасет для оценки
+            dataset: Dataset for evaluation
         
         Returns:
-            Тензор с uncertainty scores
+            Tensor with uncertainty scores
         """
-        # TODO: Реализовать вычисление uncertainty
+        # TODO: Implement uncertainty computation
         pass
-

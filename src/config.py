@@ -1,121 +1,186 @@
-"""Конфигурации для всех экспериментов проекта."""
+"""Configuration classes for all experiments."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Literal, Optional
 
 
 @dataclass
 class DatasetConfig:
-    """Конфигурация датасета."""
+    """Dataset configuration."""
     
     dataset_name: str
-    task_type: str = "classification"  # classification, regression, etc.
+    train_split: str = "train"
+    val_split: Optional[str] = None
+    test_split: Optional[str] = "test"
+    max_seq_length: int = 512
     text_column: str = "text"
     label_column: str = "label"
-    train_split: str = "train"
-    val_split: Optional[str] = None  # Если None, будет создан из train
-    test_split: Optional[str] = None
-    val_size: float = 0.1  # Доля для validation, если val_split не указан
-    max_length: int = 512
     seed: int = 42
 
 
 @dataclass
 class ModelConfig:
-    """Конфигурация моделей (student и teacher)."""
+    """Model configuration (student and teacher)."""
     
     student_model_name: str
     teacher_model_names: list[str] = field(default_factory=list)
     num_labels: int = 2
-    dropout: float = 0.1
-    freeze_embeddings: bool = False
+    device: str = "cpu"
 
 
 @dataclass
 class TrainingConfig:
-    """Общие параметры обучения."""
+    """General training parameters."""
     
     batch_size: int = 16
-    learning_rate: float = 2e-5
     num_epochs: int = 3
-    warmup_steps: int = 100
+    learning_rate: float = 2e-5
     weight_decay: float = 0.01
+    gradient_accumulation_steps: int = 1
+    warmup_steps: int = 100
     max_grad_norm: float = 1.0
-    optimizer: str = "adamw"  # adamw, adam, sgd
-    scheduler: str = "linear"  # linear, cosine, constant
     eval_steps: int = 500
     save_steps: int = 1000
+    logging_steps: int = 100
     output_dir: str = "outputs/checkpoints"
     seed: int = 42
-    logging_steps: int = 100
 
 
 @dataclass
 class KDConfig:
-    """Конфигурация knowledge distillation."""
+    """Knowledge distillation configuration."""
     
+    alpha: float = 0.7
     temperature: float = 4.0
-    alpha: float = 0.7  # Вес для distillation loss (1-alpha для hard labels)
-    use_hard_labels: bool = True
-    ensemble_method: str = "mean"  # mean, voting, weighted_mean
 
 
 @dataclass
 class ActiveLoopConfig:
-    """Конфигурация active learning цикла."""
+    """Active learning loop configuration."""
     
-    initial_pool_size: int = 100
-    query_size: int = 50
-    query_strategy: str = "uncertainty"  # uncertainty, entropy, margin
-    use_teacher_uncertainty: bool = True
-    max_iterations: int = 1  # Для v1: одна итерация
-    min_confidence_threshold: float = 0.5
+    unlabeled_pool_size: int = 1000
+    top_k_uncertain: int = 50
+    uncertainty_metric: Literal["entropy", "margin"] = "entropy"
+    max_active_iterations: int = 1
 
 
 @dataclass
 class ExperimentConfig:
-    """Объединенная конфигурация эксперимента."""
+    """Unified experiment configuration."""
     
     experiment_name: str
-    experiment_type: str  # supervised, kd, active_loop
+    experiment_type: Literal["supervised", "kd", "active_loop"]
     dataset: DatasetConfig
     model: ModelConfig
     training: TrainingConfig
     kd: Optional[KDConfig] = None
-    active_loop: Optional[ActiveLoopConfig] = None
-    device: str = "cpu"
-    num_workers: int = 0  # Для CPU обычно 0
-    pin_memory: bool = False
+    active: Optional[ActiveLoopConfig] = None
     
     def validate(self) -> None:
-        """Валидирует конфигурацию на совместимость."""
+        """Validate configuration for compatibility."""
         if self.experiment_type not in ["supervised", "kd", "active_loop"]:
             raise ValueError(
-                f"experiment_type должен быть 'supervised', 'kd' или 'active_loop', "
-                f"получено: {self.experiment_type}"
+                f"experiment_type must be 'supervised', 'kd' or 'active_loop', "
+                f"got: {self.experiment_type}"
             )
         
         if self.experiment_type in ["kd", "active_loop"]:
             if self.kd is None:
                 raise ValueError(
-                    f"Для experiment_type '{self.experiment_type}' требуется KDConfig"
+                    f"For experiment_type '{self.experiment_type}' KDConfig is required"
                 )
             if not self.model.teacher_model_names:
                 raise ValueError(
-                    f"Для experiment_type '{self.experiment_type}' требуется "
-                    "хотя бы одна teacher модель"
+                    f"For experiment_type '{self.experiment_type}' "
+                    "at least one teacher model is required"
                 )
         
         if self.experiment_type == "active_loop":
-            if self.active_loop is None:
+            if self.active is None:
                 raise ValueError(
-                    "Для experiment_type 'active_loop' требуется ActiveLoopConfig"
+                    "For experiment_type 'active_loop' ActiveLoopConfig is required"
                 )
         
-        if self.device != "cpu":
+        if self.model.device != "cpu":
             raise ValueError(
-                f"Проект поддерживает только CPU, получено device: {self.device}"
+                f"Project supports only CPU, got device: {self.model.device}"
             )
 
+
+def default_medqa_experiment(
+    experiment_name: str = "medqa_default",
+    experiment_type: Literal["supervised", "kd", "active_loop"] = "supervised",
+) -> ExperimentConfig:
+    """
+    Create an experiment configuration with reasonable defaults for MedQA/MedMCQA.
+    
+    Args:
+        experiment_name: Experiment name
+        experiment_type: Experiment type (supervised, kd, active_loop)
+    
+    Returns:
+        ExperimentConfig with settings for medical QA tasks
+    """
+    dataset = DatasetConfig(
+        dataset_name="medmcqa",
+        train_split="train",
+        val_split="validation",
+        test_split="test",
+        max_seq_length=512,
+        text_column="question",
+        label_column="correct",
+        seed=42,
+    )
+    
+    model = ModelConfig(
+        student_model_name="distilbert-base-uncased",
+        teacher_model_names=["bert-base-uncased", "roberta-base"] if experiment_type != "supervised" else [],
+        num_labels=4,  # MedMCQA has 4 answer options
+        device="cpu",
+    )
+    
+    training = TrainingConfig(
+        batch_size=16,
+        num_epochs=3,
+        learning_rate=2e-5,
+        weight_decay=0.01,
+        gradient_accumulation_steps=1,
+        warmup_steps=100,
+        max_grad_norm=1.0,
+        eval_steps=500,
+        save_steps=1000,
+        logging_steps=100,
+        output_dir="outputs/checkpoints",
+        seed=42,
+    )
+    
+    kd: Optional[KDConfig] = None
+    if experiment_type in ["kd", "active_loop"]:
+        kd = KDConfig(
+            alpha=0.7,
+            temperature=4.0,
+        )
+    
+    active: Optional[ActiveLoopConfig] = None
+    if experiment_type == "active_loop":
+        active = ActiveLoopConfig(
+            unlabeled_pool_size=1000,
+            top_k_uncertain=50,
+            uncertainty_metric="entropy",
+            max_active_iterations=1,
+        )
+    
+    config = ExperimentConfig(
+        experiment_name=experiment_name,
+        experiment_type=experiment_type,
+        dataset=dataset,
+        model=model,
+        training=training,
+        kd=kd,
+        active=active,
+    )
+    
+    config.validate()
+    return config

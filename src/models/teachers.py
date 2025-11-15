@@ -1,4 +1,4 @@
-"""Обертка для teacher ensemble."""
+"""Wrapper for teacher ensemble."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from src.config import KDConfig, ModelConfig
 
 
 class TeacherEnsemble(nn.Module):
-    """Ensemble из нескольких teacher моделей."""
+    """Ensemble of multiple teacher models."""
     
     def __init__(
         self,
@@ -18,11 +18,11 @@ class TeacherEnsemble(nn.Module):
         kd_config: KDConfig,
     ) -> None:
         """
-        Инициализирует teacher ensemble.
+        Initialize teacher ensemble.
         
         Args:
-            model_config: Конфигурация моделей
-            kd_config: Конфигурация distillation
+            model_config: Model configuration
+            kd_config: Distillation configuration
         """
         super().__init__()
         self.model_config = model_config
@@ -30,7 +30,7 @@ class TeacherEnsemble(nn.Module):
         self.teachers: list[nn.Module] = []
         self.tokenizers: list[AutoTokenizer] = []
         
-        # Загружаем все teacher модели
+        # Load all teacher models
         for teacher_name in model_config.teacher_model_names:
             teacher = AutoModelForSequenceClassification.from_pretrained(
                 teacher_name,
@@ -46,16 +46,16 @@ class TeacherEnsemble(nn.Module):
         attention_mask: torch.Tensor,
     ) -> torch.Tensor:
         """
-        Прямой проход через ensemble.
+        Forward pass through ensemble.
         
         Args:
-            input_ids: Индексы токенов
-            attention_mask: Маска внимания
+            input_ids: Token indices
+            attention_mask: Attention mask
         
         Returns:
-            Усредненные logits от всех teachers
+            Averaged logits from all teachers
         """
-        # TODO: Реализовать forward pass через ensemble
+        # TODO: Implement forward pass through ensemble
         pass
     
     def predict_soft_labels(
@@ -65,17 +65,17 @@ class TeacherEnsemble(nn.Module):
         temperature: float | None = None,
     ) -> torch.Tensor:
         """
-        Генерирует soft labels с температурой.
+        Generate soft labels with temperature.
         
         Args:
-            input_ids: Индексы токенов
-            attention_mask: Маска внимания
-            temperature: Температура для softmax (если None, используется из config)
+            input_ids: Token indices
+            attention_mask: Attention mask
+            temperature: Temperature for softmax (if None, use from config)
         
         Returns:
-            Soft labels (softmax с температурой)
+            Soft labels (softmax with temperature)
         """
-        # TODO: Реализовать генерацию soft labels
+        # TODO: Implement soft label generation
         pass
     
     def compute_uncertainty(
@@ -84,15 +84,14 @@ class TeacherEnsemble(nn.Module):
         attention_mask: torch.Tensor,
     ) -> torch.Tensor:
         """
-        Вычисляет uncertainty для active learning.
+        Compute uncertainty for active learning.
         
         Args:
-            input_ids: Индексы токенов
-            attention_mask: Маска внимания
+            input_ids: Token indices
+            attention_mask: Attention mask
         
         Returns:
-            Вектор uncertainty для каждого примера
+            Uncertainty vector for each example
         """
-        # TODO: Реализовать вычисление uncertainty
+        # TODO: Implement uncertainty computation
         pass
-

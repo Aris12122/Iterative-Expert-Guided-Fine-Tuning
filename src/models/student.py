@@ -1,4 +1,4 @@
-"""Обертка для student модели."""
+"""Wrapper for student model."""
 
 from __future__ import annotations
 
@@ -10,30 +10,25 @@ from src.config import ModelConfig
 
 
 class StudentModel(nn.Module):
-    """Обертка для student модели из HuggingFace."""
+    """Wrapper for student model from HuggingFace."""
     
     def __init__(
         self,
         config: ModelConfig,
     ) -> None:
         """
-        Инициализирует student модель.
+        Initialize student model.
         
         Args:
-            config: Конфигурация модели
+            config: Model configuration
         """
         super().__init__()
         self.config = config
         self.model = AutoModelForSequenceClassification.from_pretrained(
             config.student_model_name,
             num_labels=config.num_labels,
-            dropout=config.dropout,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(config.student_model_name)
-        
-        if config.freeze_embeddings:
-            # TODO: Заморозить embeddings
-            pass
     
     def forward(
         self,
@@ -42,17 +37,17 @@ class StudentModel(nn.Module):
         labels: torch.Tensor | None = None,
     ) -> dict[str, torch.Tensor]:
         """
-        Прямой проход модели.
+        Forward pass of the model.
         
         Args:
-            input_ids: Индексы токенов
-            attention_mask: Маска внимания
-            labels: Метки для обучения (опционально)
+            input_ids: Token indices
+            attention_mask: Attention mask
+            labels: Labels for training (optional)
         
         Returns:
-            Словарь с outputs модели
+            Dictionary with model outputs
         """
-        # TODO: Реализовать forward pass
+        # TODO: Implement forward pass
         pass
     
     def predict(
@@ -61,15 +56,14 @@ class StudentModel(nn.Module):
         attention_mask: torch.Tensor,
     ) -> torch.Tensor:
         """
-        Предсказания модели.
+        Model predictions.
         
         Args:
-            input_ids: Индексы токенов
-            attention_mask: Маска внимания
+            input_ids: Token indices
+            attention_mask: Attention mask
         
         Returns:
-            Logits предсказаний
+            Prediction logits
         """
-        # TODO: Реализовать предсказания
+        # TODO: Implement predictions
         pass
-

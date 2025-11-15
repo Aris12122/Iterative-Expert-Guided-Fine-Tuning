@@ -1,4 +1,4 @@
-"""Цикл supervised fine-tuning."""
+"""Supervised fine-tuning training loop."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from src.utils import setup_logging
 
 
 class SupervisedTrainer:
-    """Тренер для supervised fine-tuning."""
+    """Trainer for supervised fine-tuning."""
     
     def __init__(
         self,
@@ -20,11 +20,11 @@ class SupervisedTrainer:
         model: StudentModel,
     ) -> None:
         """
-        Инициализирует тренер.
+        Initialize trainer.
         
         Args:
-            config: Конфигурация эксперимента
-            model: Student модель для обучения
+            config: Experiment configuration
+            model: Student model for training
         """
         self.config = config
         self.model = model
@@ -32,7 +32,7 @@ class SupervisedTrainer:
             log_dir="outputs/logs",
             experiment_name=config.experiment_name,
         )
-        self.device = torch.device(config.device)
+        self.device = torch.device(config.model.device)
         self.model.to(self.device)
     
     def train(
@@ -41,16 +41,16 @@ class SupervisedTrainer:
         val_loader: DataLoader | None = None,
     ) -> dict[str, list[float]]:
         """
-        Обучает модель.
+        Train the model.
         
         Args:
-            train_loader: DataLoader для обучения
-            val_loader: DataLoader для валидации (опционально)
+            train_loader: DataLoader for training
+            val_loader: DataLoader for validation (optional)
         
         Returns:
-            Словарь с историей метрик
+            Dictionary with metrics history
         """
-        # TODO: Реализовать цикл обучения
+        # TODO: Implement training loop
         pass
     
     def train_epoch(
@@ -58,15 +58,15 @@ class SupervisedTrainer:
         train_loader: DataLoader,
     ) -> dict[str, float]:
         """
-        Обучает модель на одной эпохе.
+        Train the model for one epoch.
         
         Args:
-            train_loader: DataLoader для обучения
+            train_loader: DataLoader for training
         
         Returns:
-            Словарь с метриками эпохи
+            Dictionary with epoch metrics
         """
-        # TODO: Реализовать обучение на одной эпохе
+        # TODO: Implement one epoch training
         pass
     
     def evaluate(
@@ -74,14 +74,13 @@ class SupervisedTrainer:
         val_loader: DataLoader,
     ) -> dict[str, float]:
         """
-        Оценивает модель на validation set.
+        Evaluate the model on validation set.
         
         Args:
-            val_loader: DataLoader для валидации
+            val_loader: DataLoader for validation
         
         Returns:
-            Словарь с метриками
+            Dictionary with metrics
         """
-        # TODO: Реализовать оценку модели
+        # TODO: Implement model evaluation
         pass
-

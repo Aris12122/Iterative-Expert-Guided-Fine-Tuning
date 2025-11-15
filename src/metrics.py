@@ -1,4 +1,4 @@
-"""Метрики для оценки моделей."""
+"""Metrics for model evaluation."""
 
 from __future__ import annotations
 
@@ -14,17 +14,17 @@ def compute_classification_metrics(
     average: str = "macro",
 ) -> dict[str, float]:
     """
-    Вычисляет метрики классификации.
+    Compute classification metrics.
     
     Args:
-        predictions: Предсказания модели (logits или классы)
-        labels: Истинные метки
-        average: Метод усреднения для F1, precision, recall
+        predictions: Model predictions (logits or classes)
+        labels: True labels
+        average: Averaging method for F1, precision, recall
     
     Returns:
-        Словарь с метриками
+        Dictionary with metrics
     """
-    # TODO: Реализовать вычисление метрик
+    # TODO: Implement metric computation
     pass
 
 
@@ -33,16 +33,16 @@ def compute_accuracy(
     labels: torch.Tensor,
 ) -> float:
     """
-    Вычисляет accuracy.
+    Compute accuracy.
     
     Args:
-        predictions: Предсказания модели
-        labels: Истинные метки
+        predictions: Model predictions
+        labels: True labels
     
     Returns:
         Accuracy score
     """
-    # TODO: Реализовать вычисление accuracy
+    # TODO: Implement accuracy computation
     pass
 
 
@@ -52,16 +52,15 @@ def compute_f1_score(
     average: str = "macro",
 ) -> float:
     """
-    Вычисляет F1 score.
+    Compute F1 score.
     
     Args:
-        predictions: Предсказания модели
-        labels: Истинные метки
-        average: Метод усреднения
+        predictions: Model predictions
+        labels: True labels
+        average: Averaging method
     
     Returns:
         F1 score
     """
-    # TODO: Реализовать вычисление F1 score
+    # TODO: Implement F1 score computation
     pass
-
