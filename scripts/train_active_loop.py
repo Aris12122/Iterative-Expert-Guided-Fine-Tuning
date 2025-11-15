@@ -188,22 +188,13 @@ def main() -> None:
     print("\n" + "=" * 60)
     print("Final Evaluation Metrics (Active Loop v1):")
     print("=" * 60)
-    
-    # Print baseline metrics if available
-    if experiment.baseline_metrics:
-        print("\nBaseline (Student_v0) Metrics:")
-        for metric_name, metric_value in experiment.baseline_metrics.items():
-            print(f"  {metric_name}: {metric_value:.4f}")
-    
-    print("\nFinal (Student_v1) Metrics:")
     for metric_name, metric_value in final_metrics.items():
-        print(f"  {metric_name}: {metric_value:.4f}")
-    
-    print("\n" + "=" * 60)
-    print("Configuration:")
-    print(f"  Uncertainty metric: {config.active.uncertainty_metric}")
-    print(f"  Top-K uncertain: {config.active.top_k_uncertain}")
+        print(f"{metric_name}: {metric_value:.4f}")
+    print("=" * 60)
+    print(f"Active Loop Configuration:")
     print(f"  Unlabeled pool size: {config.active.unlabeled_pool_size}")
+    print(f"  Top-K uncertain: {config.active.top_k_uncertain}")
+    print(f"  Uncertainty metric: {config.active.uncertainty_metric}")
     print(f"  KD Temperature: {config.kd.temperature}")
     print(f"  KD Alpha: {config.kd.alpha}")
     print(f"  Teacher models: {config.model.teacher_model_names}")
