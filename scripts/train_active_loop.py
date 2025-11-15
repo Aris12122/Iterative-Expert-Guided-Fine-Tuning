@@ -3,6 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 from src.config import default_medqa_experiment
 from src.training.active_loop import ActiveLoopExperiment

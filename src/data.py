@@ -221,7 +221,12 @@ def load_and_normalize_dataset(
     """
     # Load the dataset
     if dataset_name.lower() == "medmcqa":
-        dataset = load_dataset("medmcqa", "A", split=split)
+        # Try to load with config "A", fallback to "default" if not available
+        try:
+            dataset = load_dataset("medmcqa", "A", split=split)
+        except ValueError:
+            # If config "A" is not available, use "default"
+            dataset = load_dataset("medmcqa", split=split)
         normalize_fn = normalize_medmcqa_example
     elif dataset_name.lower() == "medqa":
         # MedQA may be available under different names
