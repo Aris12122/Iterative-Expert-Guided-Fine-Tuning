@@ -1,7 +1,31 @@
 """Training modules."""
 
-from src.training.active_loop import ActiveLoopTrainer
-from src.training.distillation import DistillationTrainer
-from src.training.supervised import SupervisedTrainer
+from __future__ import annotations
 
-__all__ = ["SupervisedTrainer", "DistillationTrainer", "ActiveLoopTrainer"]
+from abc import ABC, abstractmethod
+from typing import Dict
+
+__all__ = ["BaseExperiment"]
+
+
+class BaseExperiment(ABC):
+    """Abstract base class for all experiments."""
+    
+    @abstractmethod
+    def train(self) -> None:
+        """
+        Train the model.
+        
+        This method should implement the full training loop.
+        """
+        pass
+    
+    @abstractmethod
+    def evaluate(self) -> Dict[str, float]:
+        """
+        Evaluate the model.
+        
+        Returns:
+            Dictionary with evaluation metrics
+        """
+        pass
