@@ -1,132 +1,166 @@
-"""CLI скрипт для knowledge distillation (Baseline 2)."""
+"""CLI script for knowledge distillation (Baseline 2)."""
 
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
-from src.config import (
-    DatasetConfig,
-    ExperimentConfig,
-    KDConfig,
-    ModelConfig,
-    TrainingConfig,
-)
-from src.models.student import StudentModel
-from src.models.teachers import TeacherEnsemble
-from src.training.distillation import DistillationTrainer
-from src.utils import save_config, set_seed
+from src.config import default_medqa_experiment
+from src.training.distillation import KDExperiment
+from src.utils import set_seed
 
 
 def parse_args() -> argparse.Namespace:
-    """Парсит аргументы командной строки."""
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Knowledge distillation baseline experiment"
     )
     
-    # Dataset arguments
-    parser.add_argument("--dataset_name", type=str, required=True)
-    parser.add_argument("--text_column", type=str, default="text")
-    parser.add_argument("--label_column", type=str, default="label")
-    parser.add_argument("--max_length", type=int, default=512)
+    # Experiment arguments
+    parser.add_argument(
+        "--experiment_name",
+        type=str,
+        default="kd_baseline",
+        help="Name of the experiment",
+    )
     
-    # Model arguments
-    parser.add_argument("--student_model_name", type=str, required=True)
-    parser.add_argument("--teacher_model_names", type=str, nargs="+", required=True)
-    parser.add_argument("--num_labels", type=int, default=2)
+    # Dataset arguments (optional, will use defaults if not provided)
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        default=None,
+        help="Dataset name (default: medmcqa)",
+    )
     
-    # Training arguments
-    parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--learning_rate", type=float, default=2e-5)
-    parser.add_argument("--num_epochs", type=int, default=3)
-    parser.add_argument("--output_dir", type=str, default="outputs/checkpoints")
-    parser.add_argument("--experiment_name", type=str, required=True)
+    # Model arguments (optional)
+    parser.add_argument(
+        "--student_model_name",
+        type=str,
+        default=None,
+        help="Student model name (default: distilbert-base-uncased)",
+    )
+    parser.add_argument(
+        "--teacher_model_names",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Teacher model names (default: bert-base-uncased roberta-base)",
+    )
     
-    # KD arguments
-    parser.add_argument("--temperature", type=float, default=4.0)
-    parser.add_argument("--alpha", type=float, default=0.7)
-    parser.add_argument("--ensemble_method", type=str, default="mean")
+    # Training arguments (optional)
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=None,
+        help="Batch size (default: 16)",
+    )
+    parser.add_argument(
+        "--learning_rate",
+        type=float,
+        default=None,
+        help="Learning rate (default: 2e-5)",
+    )
+    parser.add_argument(
+        "--num_epochs",
+        type=int,
+        default=None,
+        help="Number of epochs (default: 3)",
+    )
+    
+    # KD arguments (optional)
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=None,
+        help="Temperature for distillation (default: 4.0)",
+    )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=None,
+        help="Alpha weight for KD loss (default: 0.7)",
+    )
     
     # Other arguments
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed (default: 42)",
+    )
     
     return parser.parse_args()
 
 
-def create_config(args: argparse.Namespace) -> ExperimentConfig:
-    """Создает конфигурацию эксперимента из аргументов."""
-    dataset_config = DatasetConfig(
-        dataset_name=args.dataset_name,
-        text_column=args.text_column,
-        label_column=args.label_column,
-        max_length=args.max_length,
-        seed=args.seed,
-    )
+def main() -> None:
+    """Main function to run knowledge distillation training."""
+    args = parse_args()
     
-    model_config = ModelConfig(
-        student_model_name=args.student_model_name,
-        teacher_model_names=args.teacher_model_names,
-        num_labels=args.num_labels,
-    )
-    
-    training_config = TrainingConfig(
-        batch_size=args.batch_size,
-        learning_rate=args.learning_rate,
-        num_epochs=args.num_epochs,
-        output_dir=args.output_dir,
-        seed=args.seed,
-    )
-    
-    kd_config = KDConfig(
-        temperature=args.temperature,
-        alpha=args.alpha,
-        ensemble_method=args.ensemble_method,
-    )
-    
-    experiment_config = ExperimentConfig(
+    # Create default config
+    config = default_medqa_experiment(
         experiment_name=args.experiment_name,
         experiment_type="kd",
-        dataset=dataset_config,
-        model=model_config,
-        training=training_config,
-        kd=kd_config,
-        active_loop=None,
     )
     
-    experiment_config.validate()
-    return experiment_config
-
-
-def main() -> None:
-    """Главная функция для запуска knowledge distillation."""
-    args = parse_args()
-    config = create_config(args)
+    # Override with CLI arguments if provided
+    if args.dataset_name is not None:
+        config.dataset.dataset_name = args.dataset_name
     
-    # Устанавливаем seed
+    if args.student_model_name is not None:
+        config.model.student_model_name = args.student_model_name
+    
+    if args.teacher_model_names is not None:
+        config.model.teacher_model_names = args.teacher_model_names
+    
+    if args.batch_size is not None:
+        config.training.batch_size = args.batch_size
+    
+    if args.learning_rate is not None:
+        config.training.learning_rate = args.learning_rate
+    
+    if args.num_epochs is not None:
+        config.training.num_epochs = args.num_epochs
+    
+    if args.temperature is not None:
+        if config.kd is None:
+            raise ValueError("KDConfig is required for KD experiment")
+        config.kd.temperature = args.temperature
+    
+    if args.alpha is not None:
+        if config.kd is None:
+            raise ValueError("KDConfig is required for KD experiment")
+        config.kd.alpha = args.alpha
+    
+    config.training.seed = args.seed
+    config.dataset.seed = args.seed
+    
+    # Validate config
+    config.validate()
+    
+    # Set seed
     set_seed(config.training.seed)
     
-    # Создаем директорию для вывода
-    output_dir = Path(config.training.output_dir) / config.experiment_name
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Create experiment
+    experiment = KDExperiment(config)
     
-    # Сохраняем конфигурацию
-    save_config(config, output_dir / "config.json")
+    # Train
+    experiment.train()
     
-    # Загружаем датасет
-    # TODO: Реализовать загрузку и обработку датасета
+    # Evaluate
+    final_metrics = experiment.evaluate()
     
-    # Создаем модели
-    student_model = StudentModel(config.model)
-    teacher_ensemble = TeacherEnsemble(config.model, config.kd)
-    
-    # Создаем тренер
-    trainer = DistillationTrainer(config, student_model, teacher_ensemble)
-    
-    # Обучаем модель
-    # TODO: Реализовать обучение
-    print(f"Запуск knowledge distillation для эксперимента: {config.experiment_name}")
+    # Print final metrics
+    print("\n" + "=" * 50)
+    print("Final Evaluation Metrics (Knowledge Distillation):")
+    print("=" * 50)
+    for metric_name, metric_value in final_metrics.items():
+        print(f"{metric_name}: {metric_value:.4f}")
+    print("=" * 50)
+    print(f"KD Configuration:")
+    print(f"  Temperature: {config.kd.temperature}")
+    print(f"  Alpha: {config.kd.alpha}")
+    print(f"  Teacher models: {config.model.teacher_model_names}")
+    print("=" * 50)
 
 
 if __name__ == "__main__":
     main()
-
