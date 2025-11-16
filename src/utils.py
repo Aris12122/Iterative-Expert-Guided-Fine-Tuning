@@ -14,16 +14,22 @@ import torch
 from src.config import ExperimentConfig
 
 
-def set_seed(seed: int) -> None:
+def set_seed(seed: int, num_threads: int = 2) -> None:
     """
     Set seed for reproducibility across Python, NumPy, and PyTorch.
     
+    Also limits CPU threads to avoid overloading the system.
+    
     Args:
         seed: Seed value
+        num_threads: Number of CPU threads to use (default: 2 to avoid CPU overload)
     """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    
+    # Limit CPU threads to avoid overloading the system
+    torch.set_num_threads(num_threads)
     
     # For CPU-only, we don't need CUDA seeding
     # If CUDA is available, uncomment:
@@ -200,6 +206,7 @@ def save_config(
             "logging_steps": config.training.logging_steps,
             "output_dir": config.training.output_dir,
             "seed": config.training.seed,
+            "num_threads": config.training.num_threads,
         },
     }
     
@@ -247,7 +254,13 @@ def load_config(
     
     dataset = DatasetConfig(**config_dict["dataset"])
     model = ModelConfig(**config_dict["model"])
-    training = TrainingConfig(**config_dict["training"])
+    
+    # Handle backward compatibility for num_threads
+    training_dict = config_dict["training"].copy()
+    if "num_threads" not in training_dict:
+        training_dict["num_threads"] = 2  # Default value
+    
+    training = TrainingConfig(**training_dict)
     
     kd = None
     if "kd" in config_dict:
@@ -322,3 +335,81 @@ def load_model(
     model.load_state_dict(state_dict)
     
     return model
+
+
+def save_experiment_results(
+    experiment_name: str,
+    config: ExperimentConfig,
+    final_metrics: dict[str, float],
+    training_metrics: list[dict[str, Any]] | None = None,
+    results_dir: str | Path = "outputs/results",
+) -> Path:
+    """
+    Save experiment results to a JSON file.
+    
+    Args:
+        experiment_name: Name of the experiment
+        config: Experiment configuration
+        final_metrics: Final evaluation metrics (e.g., accuracy, expected_correctness)
+        training_metrics: List of training metrics per epoch (optional)
+        results_dir: Directory to save results
+    
+    Returns:
+        Path to saved results file
+    """
+    results_path = Path(results_dir)
+    results_path.mkdir(parents=True, exist_ok=True)
+    
+    # Prepare results dictionary
+    results = {
+        "experiment_name": experiment_name,
+        "experiment_type": config.experiment_type,
+        "config": {
+            "dataset": {
+                "dataset_name": config.dataset.dataset_name,
+                "max_seq_length": config.dataset.max_seq_length,
+                "max_samples": config.dataset.max_samples,
+            },
+            "model": {
+                "student_model_name": config.model.student_model_name,
+                "teacher_model_names": config.model.teacher_model_names,
+                "num_labels": config.model.num_labels,
+                "device": config.model.device,
+            },
+            "training": {
+                "batch_size": config.training.batch_size,
+                "num_epochs": config.training.num_epochs,
+                "learning_rate": config.training.learning_rate,
+                "weight_decay": config.training.weight_decay,
+                "seed": config.training.seed,
+            },
+        },
+        "final_metrics": final_metrics,
+    }
+    
+    # Add KD config if present
+    if config.kd is not None:
+        results["config"]["kd"] = {
+            "alpha": config.kd.alpha,
+            "temperature": config.kd.temperature,
+        }
+    
+    # Add active learning config if present
+    if config.active is not None:
+        results["config"]["active"] = {
+            "unlabeled_pool_size": config.active.unlabeled_pool_size,
+            "top_k_uncertain": config.active.top_k_uncertain,
+            "uncertainty_metric": config.active.uncertainty_metric,
+            "max_active_iterations": config.active.max_active_iterations,
+        }
+    
+    # Add training metrics if provided
+    if training_metrics is not None:
+        results["training_metrics"] = training_metrics
+    
+    # Save to JSON
+    results_file = results_path / f"{experiment_name}.json"
+    with open(results_file, "w") as f:
+        json.dump(results, f, indent=2)
+    
+    return results_file

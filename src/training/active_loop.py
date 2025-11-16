@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 import numpy as np
 import torch
@@ -186,6 +186,9 @@ class ActiveLoopExperiment(BaseExperiment):
         self.logger.info(f"Pool unlabeled: {len(self.splits['pool_unlabeled'])}")
         self.logger.info(f"Top-K uncertain: {self.active_config.top_k_uncertain}")
         self.logger.info(f"Uncertainty metric: {self.active_config.uncertainty_metric}")
+        
+        # Store training metrics
+        self.training_metrics: list[dict[str, Any]] = []
     
     def train(self) -> None:
         """Train the model through active learning loop."""
@@ -479,11 +482,21 @@ class ActiveLoopExperiment(BaseExperiment):
             # Evaluate on dev
             if "dev" in self.dataloaders:
                 dev_metrics = self._evaluate_student(self.student_v1, self.dataloaders["dev"], f"Student_v1/dev_epoch_{epoch + 1}")
+                epoch_metrics = {"loss": avg_loss, **dev_metrics}
                 log_metrics(
                     step=f"train_v1/epoch_{epoch + 1}",
-                    metrics={"loss": avg_loss, **dev_metrics},
+                    metrics=epoch_metrics,
                     logger=self.logger,
                 )
+            else:
+                epoch_metrics = {"loss": avg_loss}
+            
+            # Store training metrics
+            self.training_metrics.append({
+                "epoch": epoch + 1,
+                "stage": "student_v1",
+                **epoch_metrics,
+            })
         
         # Save Student_v1
         self.logger.info("Saving Student_v1...")

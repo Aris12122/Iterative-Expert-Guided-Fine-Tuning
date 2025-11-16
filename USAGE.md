@@ -76,6 +76,18 @@ Iterative Expert-Guided Fine-Tuning/
 └── .cursorrules           # Project rules
 ```
 
+### Quick Testing
+
+**For quick testing and verification**, the default configuration uses:
+- Limited dataset size (500 samples)
+- Small batch size (8)
+- Single epoch (1)
+- Reduced warmup steps (10)
+
+This allows you to verify the code works in a few minutes per epoch.
+
+**To use full dataset**, override `max_samples` in the config or set it to `None`.
+
 ### Running Experiments
 
 #### Baseline 1: Supervised Fine-Tuning
@@ -86,6 +98,8 @@ Train a student model using only labeled data:
 python scripts/train_supervised.py \
     --experiment_name "supervised_baseline_001"
 ```
+
+**Note:** By default, this uses a limited dataset (500 samples) for quick testing. Training should complete in a few minutes.
 
 **With custom parameters:**
 ```bash
@@ -348,6 +362,18 @@ Iterative Expert-Guided Fine-Tuning/
 └── .cursorrules           # Правила проекта
 ```
 
+### Быстрое тестирование
+
+**Для быстрого тестирования и проверки** конфигурация по умолчанию использует:
+- Ограниченный размер датасета (500 примеров)
+- Небольшой размер батча (8)
+- Одна эпоха (1)
+- Уменьшенное количество warmup steps (10)
+
+Это позволяет проверить работоспособность кода за несколько минут на эпоху.
+
+**Для использования полного датасета** переопределите `max_samples` в конфиге или установите его в `None`.
+
 ### Запуск экспериментов
 
 #### Baseline 1: Supervised Fine-Tuning
@@ -358,6 +384,8 @@ Iterative Expert-Guided Fine-Tuning/
 python scripts/train_supervised.py \
     --experiment_name "supervised_baseline_001"
 ```
+
+**Примечание:** По умолчанию используется ограниченный датасет (500 примеров) для быстрого тестирования. Обучение должно завершиться за несколько минут.
 
 **С пользовательскими параметрами:**
 ```bash

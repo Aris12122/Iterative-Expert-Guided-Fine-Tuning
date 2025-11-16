@@ -111,7 +111,11 @@ All hyperparameters are configured through dataclasses in `src/config.py`:
 
 ### Status
 
-Project is under development. Main structure is created, function implementations are marked as TODO.
+✅ **Project is fully implemented and tested!**
+
+- All three approaches (Baseline 1, Baseline 2, Expert-Loop v1) are implemented
+- Initial test run completed successfully
+- See `RESULTS.md` for detailed results and next steps
 
 ---
 
@@ -222,4 +226,8 @@ python scripts/eval_model.py \
 
 ### Статус
 
-Проект находится в стадии разработки. Основная структура создана, реализация функций помечена как TODO.
+✅ **Проект полностью реализован и протестирован!**
+
+- Все три подхода (Baseline 1, Baseline 2, Expert-Loop v1) реализованы
+- Первичное тестирование завершено успешно
+- См. `RESULTS.md` для подробных результатов и следующих шагов

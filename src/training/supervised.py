@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.optim import AdamW
@@ -17,7 +18,13 @@ from src.data import create_dataloaders
 from src.metrics import accuracy, expected_correctness
 from src.models import build_student_model
 from src.training import BaseExperiment
-from src.utils import log_metrics, move_to_device, save_model, setup_logging
+from src.utils import (
+    log_metrics,
+    move_to_device,
+    save_experiment_results,
+    save_model,
+    setup_logging,
+)
 
 
 class SupervisedExperiment(BaseExperiment):
@@ -68,8 +75,11 @@ class SupervisedExperiment(BaseExperiment):
         )
         
         # Setup scheduler (linear warmup + decay)
-        total_steps = len(self.dataloaders["train_labeled"]) * config.training.num_epochs
         warmup_steps = config.training.warmup_steps
+        # Limit warmup steps to avoid too many scheduler steps
+        max_warmup = len(self.dataloaders["train_labeled"]) * 2  # Max 2 batches worth
+        warmup_steps = min(warmup_steps, max_warmup)
+        
         if warmup_steps > 0:
             self.scheduler = LinearLR(
                 self.optimizer,
@@ -86,6 +96,9 @@ class SupervisedExperiment(BaseExperiment):
             self.logger.info(f"Dev samples: {len(self.dataloaders['dev'].dataset)}")
         if "test" in self.dataloaders:
             self.logger.info(f"Test samples: {len(self.dataloaders['test'].dataset)}")
+        
+        # Store training metrics
+        self.training_metrics: list[dict[str, Any]] = []
     
     def train(self) -> None:
         """Train the model."""
@@ -141,7 +154,8 @@ class SupervisedExperiment(BaseExperiment):
                 self.optimizer.zero_grad()
                 
                 # Scheduler step (only during warmup)
-                if self.scheduler is not None and batch_idx < self.config.training.warmup_steps:
+                max_warmup = len(train_loader) * 2  # Max 2 batches worth
+                if self.scheduler is not None and batch_idx < min(self.config.training.warmup_steps, max_warmup):
                     self.scheduler.step()
                 
                 # Accumulate loss
@@ -157,17 +171,25 @@ class SupervisedExperiment(BaseExperiment):
             # Evaluate on dev set
             if dev_loader is not None:
                 dev_metrics = self._evaluate_on_loader(dev_loader, split="dev")
+                epoch_metrics = {"loss": avg_loss, **dev_metrics}
                 log_metrics(
                     step=f"train/epoch_{epoch + 1}",
-                    metrics={"loss": avg_loss, **dev_metrics},
+                    metrics=epoch_metrics,
                     logger=self.logger,
                 )
             else:
+                epoch_metrics = {"loss": avg_loss}
                 log_metrics(
                     step=f"train/epoch_{epoch + 1}",
-                    metrics={"loss": avg_loss},
+                    metrics=epoch_metrics,
                     logger=self.logger,
                 )
+            
+            # Store training metrics
+            self.training_metrics.append({
+                "epoch": epoch + 1,
+                **epoch_metrics,
+            })
         
         # Save final model
         self.logger.info("Saving final model...")
@@ -180,25 +202,50 @@ class SupervisedExperiment(BaseExperiment):
     
     def evaluate(self) -> Dict[str, float]:
         """
-        Evaluate the model on test set.
+        Evaluate the model on test set (or validation if test has no labels).
         
         Returns:
             Dictionary with evaluation metrics
         """
+        # Prefer test set, but fall back to validation if test is not available
+        # or if test set appears to have no ground truth labels
+        eval_split = "test"
         if "test" not in self.dataloaders:
-            self.logger.warning("No test set available for evaluation")
-            return {}
+            if "dev" in self.dataloaders:
+                self.logger.warning("No test set available, using validation set for evaluation")
+                eval_split = "dev"
+            else:
+                self.logger.warning("No test or validation set available for evaluation")
+                return {}
+        elif "test" in self.dataloaders:
+            # Check if test set has valid labels (not all zeros)
+            # This is a heuristic - if all labels are 0, test set likely has no ground truth
+            test_loader = self.dataloaders["test"]
+            all_test_labels = []
+            for batch in test_loader:
+                labels = batch["labels"]
+                all_test_labels.extend(labels.tolist() if hasattr(labels, 'tolist') else [labels])
+            
+            if all_test_labels and all(label == 0 for label in all_test_labels):
+                self.logger.warning(
+                    "Test set appears to have no ground truth labels (all labels are 0). "
+                    "Using validation set for evaluation instead."
+                )
+                if "dev" in self.dataloaders:
+                    eval_split = "dev"
+                else:
+                    self.logger.warning("No validation set available, using test set anyway")
         
-        self.logger.info("Evaluating on test set...")
-        test_metrics = self._evaluate_on_loader(self.dataloaders["test"], split="test")
+        self.logger.info(f"Evaluating on {eval_split} set...")
+        eval_metrics = self._evaluate_on_loader(self.dataloaders[eval_split], split=eval_split)
         
         log_metrics(
-            step="eval/test",
-            metrics=test_metrics,
+            step=f"eval/{eval_split}",
+            metrics=eval_metrics,
             logger=self.logger,
         )
         
-        return test_metrics
+        return eval_metrics
     
     def _evaluate_on_loader(
         self,
@@ -251,9 +298,30 @@ class SupervisedExperiment(BaseExperiment):
                 all_probs.append(probs.cpu())
         
         # Concatenate all results
+        if len(all_predictions) == 0:
+            self.logger.warning(f"No predictions collected for {split}")
+            return {"accuracy": 0.0, "expected_correctness": 0.0}
+        
         all_predictions = torch.cat(all_predictions).numpy()
         all_labels = torch.cat(all_labels).numpy()
         all_probs = torch.cat(all_probs).numpy()
+        
+        # Ensure same dtype for comparison
+        all_predictions = all_predictions.astype(np.int64)
+        all_labels = all_labels.astype(np.int64)
+        
+        # Debug info (only log once)
+        if split == "test":
+            self.logger.info(
+                f"Test evaluation - predictions shape: {all_predictions.shape}, "
+                f"labels shape: {all_labels.shape}, "
+                f"predictions dtype: {all_predictions.dtype}, "
+                f"labels dtype: {all_labels.dtype}, "
+                f"unique predictions: {np.unique(all_predictions)}, "
+                f"unique labels: {np.unique(all_labels)}, "
+                f"first 10 predictions: {all_predictions[:10]}, "
+                f"first 10 labels: {all_labels[:10]}"
+            )
         
         # Compute metrics
         acc = accuracy(all_predictions, all_labels)

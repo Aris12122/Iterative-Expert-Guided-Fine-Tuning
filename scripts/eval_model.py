@@ -39,8 +39,8 @@ def main() -> None:
     # Load configuration
     config = load_config(Path(args.config_path))
     
-    # Set seed
-    set_seed(config.training.seed)
+    # Set seed and limit CPU threads
+    set_seed(config.training.seed, num_threads=config.training.num_threads)
     
     # Load model
     model = build_student_model(config.model)

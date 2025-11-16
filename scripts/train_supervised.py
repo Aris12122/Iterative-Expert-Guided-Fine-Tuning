@@ -12,7 +12,7 @@ sys.path.insert(0, str(project_root))
 
 from src.config import default_medqa_experiment
 from src.training.supervised import SupervisedExperiment
-from src.utils import set_seed
+from src.utils import save_experiment_results, set_seed
 
 
 def parse_args() -> argparse.Namespace:
@@ -108,8 +108,8 @@ def main() -> None:
     # Validate config
     config.validate()
     
-    # Set seed
-    set_seed(config.training.seed)
+    # Set seed and limit CPU threads
+    set_seed(config.training.seed, num_threads=config.training.num_threads)
     
     # Create experiment
     experiment = SupervisedExperiment(config)
@@ -120,6 +120,14 @@ def main() -> None:
     # Evaluate
     final_metrics = experiment.evaluate()
     
+    # Save results to JSON file
+    results_file = save_experiment_results(
+        experiment_name=config.experiment_name,
+        config=config,
+        final_metrics=final_metrics,
+        training_metrics=experiment.training_metrics,
+    )
+    
     # Print final metrics
     print("\n" + "=" * 50)
     print("Final Evaluation Metrics:")
@@ -127,6 +135,7 @@ def main() -> None:
     for metric_name, metric_value in final_metrics.items():
         print(f"{metric_name}: {metric_value:.4f}")
     print("=" * 50)
+    print(f"\nResults saved to: {results_file}")
 
 
 if __name__ == "__main__":

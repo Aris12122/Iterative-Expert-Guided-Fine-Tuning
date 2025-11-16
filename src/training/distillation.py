@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 import torch
 import torch.nn.functional as F
@@ -79,6 +79,10 @@ class KDExperiment(BaseExperiment):
         
         # Setup scheduler (linear warmup + decay)
         warmup_steps = config.training.warmup_steps
+        # Limit warmup steps to avoid too many scheduler steps
+        max_warmup = len(self.dataloaders["train_labeled"]) * 2  # Max 2 batches worth
+        warmup_steps = min(warmup_steps, max_warmup)
+        
         if warmup_steps > 0:
             self.scheduler = LinearLR(
                 self.optimizer,
@@ -96,6 +100,9 @@ class KDExperiment(BaseExperiment):
             self.logger.info(f"Dev samples: {len(self.dataloaders['dev'].dataset)}")
         if "test" in self.dataloaders:
             self.logger.info(f"Test samples: {len(self.dataloaders['test'].dataset)}")
+        
+        # Store training metrics
+        self.training_metrics: list[dict[str, Any]] = []
     
     def train(self) -> None:
         """Train the student model through knowledge distillation."""
@@ -166,7 +173,8 @@ class KDExperiment(BaseExperiment):
                 self.optimizer.zero_grad()
                 
                 # Scheduler step (only during warmup)
-                if self.scheduler is not None and batch_idx < self.config.training.warmup_steps:
+                max_warmup = len(train_loader) * 2  # Max 2 batches worth
+                if self.scheduler is not None and batch_idx < min(self.config.training.warmup_steps, max_warmup):
                     self.scheduler.step()
                 
                 # Accumulate losses
@@ -190,26 +198,34 @@ class KDExperiment(BaseExperiment):
             # Evaluate on dev set
             if dev_loader is not None:
                 dev_metrics = self._evaluate_on_loader(dev_loader, split="dev")
+                epoch_metrics = {
+                    "loss": avg_loss,
+                    "ce_loss": avg_ce_loss,
+                    "kd_loss": avg_kd_loss,
+                    **dev_metrics,
+                }
                 log_metrics(
                     step=f"train/epoch_{epoch + 1}",
-                    metrics={
-                        "loss": avg_loss,
-                        "ce_loss": avg_ce_loss,
-                        "kd_loss": avg_kd_loss,
-                        **dev_metrics,
-                    },
+                    metrics=epoch_metrics,
                     logger=self.logger,
                 )
             else:
+                epoch_metrics = {
+                    "loss": avg_loss,
+                    "ce_loss": avg_ce_loss,
+                    "kd_loss": avg_kd_loss,
+                }
                 log_metrics(
                     step=f"train/epoch_{epoch + 1}",
-                    metrics={
-                        "loss": avg_loss,
-                        "ce_loss": avg_ce_loss,
-                        "kd_loss": avg_kd_loss,
-                    },
+                    metrics=epoch_metrics,
                     logger=self.logger,
                 )
+            
+            # Store training metrics
+            self.training_metrics.append({
+                "epoch": epoch + 1,
+                **epoch_metrics,
+            })
         
         # Save final model
         self.logger.info("Saving final model...")

@@ -18,6 +18,7 @@ class DatasetConfig:
     text_column: str = "text"
     label_column: str = "label"
     seed: int = 42
+    max_samples: Optional[int] = None  # Limit dataset size for quick testing (None = use all)
 
 
 @dataclass
@@ -34,18 +35,19 @@ class ModelConfig:
 class TrainingConfig:
     """General training parameters."""
     
-    batch_size: int = 16
-    num_epochs: int = 3
+    batch_size: int = 8  # Reduced for CPU and quick testing
+    num_epochs: int = 1  # Reduced for quick testing
     learning_rate: float = 2e-5
     weight_decay: float = 0.01
     gradient_accumulation_steps: int = 1
-    warmup_steps: int = 100
+    warmup_steps: int = 10  # Reduced for quick testing
     max_grad_norm: float = 1.0
-    eval_steps: int = 500
-    save_steps: int = 1000
-    logging_steps: int = 100
+    eval_steps: int = 50  # Reduced for quick testing
+    save_steps: int = 100
+    logging_steps: int = 10  # Reduced for quick testing
     output_dir: str = "outputs/checkpoints"
     seed: int = 42
+    num_threads: int = 2  # Limit CPU threads to avoid overloading
 
 
 @dataclass
@@ -132,6 +134,7 @@ def default_medqa_experiment(
         text_column="question",
         label_column="correct",
         seed=42,
+        max_samples=2500, # Limit to 1000 samples for quick testing
     )
     
     model = ModelConfig(
@@ -142,18 +145,19 @@ def default_medqa_experiment(
     )
     
     training = TrainingConfig(
-        batch_size=16,
-        num_epochs=3,
+        batch_size=8,  # Reduced for CPU and quick testing
+        num_epochs=1,  # Reduced for quick testing
         learning_rate=2e-5,
         weight_decay=0.01,
         gradient_accumulation_steps=1,
-        warmup_steps=100,
+        warmup_steps=10,  # Reduced for quick testing
         max_grad_norm=1.0,
-        eval_steps=500,
-        save_steps=1000,
-        logging_steps=100,
+        eval_steps=50,  # Reduced for quick testing
+        save_steps=100,
+        logging_steps=10,  # Reduced for quick testing
         output_dir="outputs/checkpoints",
         seed=42,
+        num_threads=2,  # Limit CPU threads
     )
     
     kd: Optional[KDConfig] = None
@@ -166,8 +170,8 @@ def default_medqa_experiment(
     active: Optional[ActiveLoopConfig] = None
     if experiment_type == "active_loop":
         active = ActiveLoopConfig(
-            unlabeled_pool_size=1000,
-            top_k_uncertain=50,
+            unlabeled_pool_size=100,  # Reduced for quick testing
+            top_k_uncertain=20,  # Reduced for quick testing
             uncertainty_metric="entropy",
             max_active_iterations=1,
         )

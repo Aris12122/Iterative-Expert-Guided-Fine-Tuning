@@ -150,7 +150,30 @@ def normalize_medmcqa_example(
         example.get("opc", ""),
         example.get("opd", ""),
     ]
-    correct_index = example.get("cop", 0)  # cop: 0, 1, 2, 3
+    
+    # Try to get correct answer index
+    # MedMCQA uses "cop" field (correct option), which can be 0, 1, 2, 3 or 1, 2, 3, 4
+    # If cop is missing or None, try other fields
+    correct_index = example.get("cop")
+    
+    # Handle None or missing values
+    if correct_index is None:
+        # Try alternative field names
+        correct_index = example.get("correct", example.get("answer_idx", 0))
+    
+    # Normalize to 0-indexed (MedMCQA may use 1-indexed: 1,2,3,4 -> 0,1,2,3)
+    # Check if index is out of range for 0-indexed (should be 0-3)
+    if isinstance(correct_index, (int, float)) and correct_index > 3:
+        # Assume 1-indexed and convert to 0-indexed
+        correct_index = int(correct_index) - 1
+    elif isinstance(correct_index, (int, float)):
+        correct_index = int(correct_index)
+    else:
+        # If still not valid, default to 0
+        correct_index = 0
+    
+    # Ensure valid range [0, 3]
+    correct_index = max(0, min(3, correct_index))
     
     return MCQAExample(
         question=question,
@@ -272,18 +295,31 @@ def load_splits(
         config.train_split,
     )
     
+    # Limit dataset size for quick testing
+    if config.max_samples is not None and len(train_examples) > config.max_samples:
+        import random
+        random.seed(config.seed)
+        random.shuffle(train_examples)
+        train_examples = train_examples[:config.max_samples]
+    
     # Load dev/validation split
     if config.val_split:
         dev_examples = load_and_normalize_dataset(
             config.dataset_name,
             config.val_split,
         )
+        # Limit dev size for quick testing
+        if config.max_samples is not None and len(dev_examples) > config.max_samples // 10:
+            import random
+            random.seed(config.seed)
+            random.shuffle(dev_examples)
+            dev_examples = dev_examples[:config.max_samples // 10]
     else:
         # If val_split is not specified, create from train
         import random
         random.seed(config.seed)
         random.shuffle(train_examples)
-        split_idx = int(len(train_examples) * 0.1)
+        split_idx = max(1, int(len(train_examples) * 0.1))
         dev_examples = train_examples[:split_idx]
         train_examples = train_examples[split_idx:]
     
@@ -293,6 +329,26 @@ def load_splits(
             config.dataset_name,
             config.test_split,
         )
+        # Limit test size for quick testing
+        if config.max_samples is not None and len(test_examples) > config.max_samples // 10:
+            import random
+            random.seed(config.seed)
+            random.shuffle(test_examples)
+            test_examples = test_examples[:config.max_samples // 10]
+        
+        # Debug: Check if test examples have valid labels
+        # In MedMCQA, test split may not have labels (cop field may be missing)
+        # Count examples with non-zero labels
+        non_zero_labels = sum(1 for ex in test_examples if ex.correct_index != 0)
+        if non_zero_labels == 0 and len(test_examples) > 0:
+            # If all labels are 0, test split likely doesn't have ground truth
+            # In this case, we should use validation split for evaluation instead
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Test split appears to have no ground truth labels (all labels are 0). "
+                f"This is common in MedMCQA test split. Consider using validation split for evaluation."
+            )
     else:
         test_examples = []
     

@@ -12,7 +12,7 @@ sys.path.insert(0, str(project_root))
 
 from src.config import default_medqa_experiment
 from src.training.active_loop import ActiveLoopExperiment
-from src.utils import set_seed
+from src.utils import save_experiment_results, set_seed
 
 
 def parse_args() -> argparse.Namespace:
@@ -178,8 +178,8 @@ def main() -> None:
     # Validate config
     config.validate()
     
-    # Set seed
-    set_seed(config.training.seed)
+    # Set seed and limit CPU threads
+    set_seed(config.training.seed, num_threads=config.training.num_threads)
     
     # Create experiment
     experiment = ActiveLoopExperiment(config)
@@ -189,6 +189,14 @@ def main() -> None:
     
     # Evaluate
     final_metrics = experiment.evaluate()
+    
+    # Save results to JSON file
+    results_file = save_experiment_results(
+        experiment_name=config.experiment_name,
+        config=config,
+        final_metrics=final_metrics,
+        training_metrics=experiment.training_metrics,
+    )
     
     # Print final metrics
     print("\n" + "=" * 60)
@@ -205,6 +213,7 @@ def main() -> None:
     print(f"  KD Alpha: {config.kd.alpha}")
     print(f"  Teacher models: {config.model.teacher_model_names}")
     print("=" * 60)
+    print(f"\nResults saved to: {results_file}")
 
 
 if __name__ == "__main__":
