@@ -134,7 +134,7 @@ def default_medqa_experiment(
         text_column="question",
         label_column="correct",
         seed=42,
-        max_samples=2500, # Limit to 1000 samples for quick testing
+        max_samples=500, # Limit to 1000 samples for quick testing
     )
     
     model = ModelConfig(
