@@ -296,7 +296,7 @@ def save_model(
         output_path: Path for saving
         config: Experiment configuration
     """
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.mkdir(parents=True, exist_ok=True)
     
     # Save model state dict
     model_path = output_path / "model.pt"

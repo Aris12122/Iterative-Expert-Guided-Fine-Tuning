@@ -36,6 +36,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Dataset name (default: medmcqa)",
     )
+    parser.add_argument(
+        "--max_samples",
+        type=int,
+        default=None,
+        help="Maximum number of samples to use (default: None, uses all)",
+    )
     
     # Model arguments (optional)
     parser.add_argument(
@@ -131,6 +137,9 @@ def main() -> None:
     # Override with CLI arguments if provided
     if args.dataset_name is not None:
         config.dataset.dataset_name = args.dataset_name
+    
+    if args.max_samples is not None:
+        config.dataset.max_samples = args.max_samples
     
     if args.student_model_name is not None:
         config.model.student_model_name = args.student_model_name
