@@ -14,6 +14,29 @@ import torch
 from src.config import ExperimentConfig
 
 
+def get_device(device: str | None = None) -> torch.device:
+    """
+    Get the appropriate device for training.
+    
+    If device is None or "auto", automatically selects:
+    - "cuda" if CUDA is available
+    - "cpu" otherwise
+    
+    Args:
+        device: Device string ("cpu", "cuda", "auto", or None)
+    
+    Returns:
+        torch.device object
+    """
+    if device is None or device == "auto":
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        else:
+            return torch.device("cpu")
+    else:
+        return torch.device(device)
+
+
 def set_seed(seed: int, num_threads: int = 2) -> None:
     """
     Set seed for reproducibility across Python, NumPy, and PyTorch.
@@ -31,10 +54,10 @@ def set_seed(seed: int, num_threads: int = 2) -> None:
     # Limit CPU threads to avoid overloading the system
     torch.set_num_threads(num_threads)
     
-    # For CPU-only, we don't need CUDA seeding
-    # If CUDA is available, uncomment:
-    # torch.cuda.manual_seed(seed)
-    # torch.cuda.manual_seed_all(seed)
+    # Set CUDA seeds if available
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
     
     # Make deterministic (may slow down training)
     torch.backends.cudnn.deterministic = True
@@ -331,7 +354,8 @@ def load_model(
     if not state_dict_path.exists():
         raise FileNotFoundError(f"Model file not found: {state_dict_path}")
     
-    state_dict = torch.load(state_dict_path, map_location=config.model.device)
+    device = get_device(config.model.device)
+    state_dict = torch.load(state_dict_path, map_location=device)
     model.load_state_dict(state_dict)
     
     return model

@@ -19,6 +19,7 @@ from src.metrics import accuracy, expected_correctness
 from src.models import build_student_model
 from src.training import BaseExperiment
 from src.utils import (
+    get_device,
     log_metrics,
     move_to_device,
     save_experiment_results,
@@ -41,7 +42,7 @@ class SupervisedExperiment(BaseExperiment):
             config: Experiment configuration
         """
         self.config = config
-        self.device = torch.device(config.model.device)
+        self.device = get_device(config.model.device)
         
         # Setup logging
         self.logger = setup_logging(
@@ -168,10 +169,31 @@ class SupervisedExperiment(BaseExperiment):
             # Average loss
             avg_loss = total_loss / num_batches if num_batches > 0 else 0.0
             
+            # Log detailed training info
+            self.logger.info(
+                f"Epoch {epoch + 1} completed - "
+                f"Average loss: {avg_loss:.4f}, "
+                f"Total batches: {num_batches}, "
+                f"Train samples: {len(train_loader.dataset)}"
+            )
+            
             # Evaluate on dev set
             if dev_loader is not None:
                 dev_metrics = self._evaluate_on_loader(dev_loader, split="dev")
                 epoch_metrics = {"loss": avg_loss, **dev_metrics}
+                
+                # Log if accuracy is improving
+                if epoch > 0 and "accuracy" in dev_metrics:
+                    prev_acc = self.training_metrics[-1].get("accuracy", 0.0) if self.training_metrics else 0.0
+                    if dev_metrics["accuracy"] > prev_acc:
+                        self.logger.info(
+                            f"✓ Accuracy improved: {prev_acc:.4f} -> {dev_metrics['accuracy']:.4f}"
+                        )
+                    elif dev_metrics["accuracy"] <= prev_acc:
+                        self.logger.warning(
+                            f"⚠ Accuracy did not improve: {prev_acc:.4f} -> {dev_metrics['accuracy']:.4f}"
+                        )
+                
                 log_metrics(
                     step=f"train/epoch_{epoch + 1}",
                     metrics=epoch_metrics,
@@ -310,17 +332,30 @@ class SupervisedExperiment(BaseExperiment):
         all_predictions = all_predictions.astype(np.int64)
         all_labels = all_labels.astype(np.int64)
         
-        # Debug info (only log once)
-        if split == "test":
-            self.logger.info(
-                f"Test evaluation - predictions shape: {all_predictions.shape}, "
-                f"labels shape: {all_labels.shape}, "
-                f"predictions dtype: {all_predictions.dtype}, "
-                f"labels dtype: {all_labels.dtype}, "
-                f"unique predictions: {np.unique(all_predictions)}, "
-                f"unique labels: {np.unique(all_labels)}, "
-                f"first 10 predictions: {all_predictions[:10]}, "
-                f"first 10 labels: {all_labels[:10]}"
+        # Debug info (log for all splits to diagnose issues)
+        self.logger.info(
+            f"{split} evaluation - "
+            f"predictions shape: {all_predictions.shape}, "
+            f"labels shape: {all_labels.shape}, "
+            f"unique predictions: {np.unique(all_predictions)}, "
+            f"unique labels: {np.unique(all_labels)}, "
+            f"label distribution: {dict(zip(*np.unique(all_labels, return_counts=True)))}, "
+            f"prediction distribution: {dict(zip(*np.unique(all_predictions, return_counts=True)))}"
+        )
+        
+        # Check if model is just predicting one class
+        unique_preds = np.unique(all_predictions)
+        if len(unique_preds) == 1:
+            self.logger.warning(
+                f"⚠ Model is predicting only one class ({unique_preds[0]})! "
+                f"This suggests the model is not learning properly."
+            )
+        
+        # Check if accuracy is at random level
+        if acc < 0.3:  # Below 30% for 4 classes (random is 25%)
+            self.logger.warning(
+                f"⚠ Very low accuracy ({acc:.4f}) - model may not be learning. "
+                f"Check: 1) Is loss decreasing? 2) Enough training data? 3) Enough epochs?"
             )
         
         # Compute metrics

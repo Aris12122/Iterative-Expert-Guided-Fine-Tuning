@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from transformers import AutoModelForMultipleChoice, AutoTokenizer
 
 from src.config import ModelConfig
+from src.utils import get_device
 
 
 class StudentMCQAModel(nn.Module):
@@ -25,7 +26,7 @@ class StudentMCQAModel(nn.Module):
         """
         super().__init__()
         self.config = config
-        self.device = torch.device(config.device)
+        self.device = get_device(config.device)
         
         # Load model for multiple choice
         self.model = AutoModelForMultipleChoice.from_pretrained(
