@@ -25,7 +25,7 @@ from src.metrics import accuracy, entropy, expected_correctness, max_prob
 from src.models import build_student_model, build_teacher_ensemble
 from src.training import BaseExperiment
 from src.training.supervised import SupervisedExperiment
-from src.utils import log_metrics, move_to_device, save_model, setup_logging
+from src.utils import get_device, log_metrics, move_to_device, save_model, setup_logging
 
 
 class CombinedDataset(Dataset):
@@ -135,7 +135,7 @@ class ActiveLoopExperiment(BaseExperiment):
             config: Experiment configuration
         """
         self.config = config
-        self.device = torch.device(config.model.device)
+        self.device = get_device(config.model.device)
         
         if config.active is None:
             raise ValueError("ActiveLoopConfig is required for ActiveLoopExperiment")

@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from transformers import AutoModelForMultipleChoice, AutoTokenizer
 
 from src.config import ModelConfig
+from src.utils import get_device
 
 
 class TeacherMCQAModel(nn.Module):
@@ -29,7 +30,7 @@ class TeacherMCQAModel(nn.Module):
         """
         super().__init__()
         self.model_name = model_name
-        self.device = torch.device(device)
+        self.device = get_device(device)
         
         # Load model for multiple choice
         self.model = AutoModelForMultipleChoice.from_pretrained(
@@ -151,7 +152,7 @@ class TeacherEnsemble(nn.Module):
         """
         super().__init__()
         self.model_config = model_config
-        self.device = torch.device(model_config.device)
+        self.device = get_device(model_config.device)
         
         if not model_config.teacher_model_names:
             raise ValueError("At least one teacher model name is required")

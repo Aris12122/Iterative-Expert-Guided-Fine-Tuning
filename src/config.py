@@ -28,7 +28,7 @@ class ModelConfig:
     student_model_name: str
     teacher_model_names: list[str] = field(default_factory=list)
     num_labels: int = 2
-    device: str = "cpu"
+    device: str = "auto"  # "auto", "cpu", or "cuda" - auto selects GPU if available
 
 
 @dataclass
@@ -104,11 +104,6 @@ class ExperimentConfig:
                 raise ValueError(
                     "For experiment_type 'active_loop' ActiveLoopConfig is required"
                 )
-        
-        if self.model.device != "cpu":
-            raise ValueError(
-                f"Project supports only CPU, got device: {self.model.device}"
-            )
 
 
 def default_medqa_experiment(
@@ -141,7 +136,7 @@ def default_medqa_experiment(
         student_model_name="distilbert-base-uncased",
         teacher_model_names=["bert-base-uncased", "roberta-base"] if experiment_type != "supervised" else [],
         num_labels=4,  # MedMCQA has 4 answer options
-        device="cpu",
+        device="auto",  # Automatically use GPU if available
     )
     
     training = TrainingConfig(
@@ -172,6 +167,117 @@ def default_medqa_experiment(
         active = ActiveLoopConfig(
             unlabeled_pool_size=100,  # Reduced for quick testing
             top_k_uncertain=20,  # Reduced for quick testing
+            uncertainty_metric="entropy",
+            max_active_iterations=1,
+        )
+    
+    config = ExperimentConfig(
+        experiment_name=experiment_name,
+        experiment_type=experiment_type,
+        dataset=dataset,
+        model=model,
+        training=training,
+        kd=kd,
+        active=active,
+    )
+    
+    config.validate()
+    return config
+
+
+def improved_medqa_experiment(
+    experiment_name: str = "medqa_improved",
+    experiment_type: Literal["supervised", "kd", "active_loop"] = "supervised",
+    use_full_dataset: bool = True,
+    gpu_optimized: bool = True,
+) -> ExperimentConfig:
+    """
+    Create an improved experiment configuration with better models for GPU training.
+    
+    Uses more powerful models (BERT-base/RoBERTa-base for student, BERT-large/RoBERTa-large
+    for teachers) and GPU-optimized settings.
+    
+    Args:
+        experiment_name: Experiment name
+        experiment_type: Experiment type (supervised, kd, active_loop)
+        use_full_dataset: If True, use full dataset (max_samples=None)
+        gpu_optimized: If True, use GPU-optimized batch sizes and settings
+    
+    Returns:
+        ExperimentConfig with improved settings for medical QA tasks
+    """
+    dataset = DatasetConfig(
+        dataset_name="medmcqa",
+        train_split="train",
+        val_split="validation",
+        test_split="test",
+        max_seq_length=512,
+        text_column="question",
+        label_column="correct",
+        seed=42,
+        max_samples=None if use_full_dataset else 500,
+    )
+    
+    # Use more powerful models
+    model = ModelConfig(
+        # Better student model (BERT-base instead of DistilBERT)
+        student_model_name="bert-base-uncased",  # or "roberta-base"
+        # Large teacher models for better knowledge distillation
+        teacher_model_names=[
+            "bert-large-uncased",
+            "roberta-large",
+        ] if experiment_type != "supervised" else [],
+        num_labels=4,  # MedMCQA has 4 answer options
+        device="auto",  # Automatically use GPU if available
+    )
+    
+    # GPU-optimized training settings
+    if gpu_optimized:
+        training = TrainingConfig(
+            batch_size=32,  # Larger batch size for GPU
+            num_epochs=5,  # More epochs for better convergence
+            learning_rate=2e-5,
+            weight_decay=0.01,
+            gradient_accumulation_steps=1,
+            warmup_steps=500,  # More warmup steps
+            max_grad_norm=1.0,
+            eval_steps=500,  # More frequent evaluation
+            save_steps=1000,
+            logging_steps=100,
+            output_dir="outputs/checkpoints",
+            seed=42,
+            num_threads=4,  # More threads on GPU machine
+        )
+    else:
+        # CPU-friendly settings
+        training = TrainingConfig(
+            batch_size=8,
+            num_epochs=3,
+            learning_rate=2e-5,
+            weight_decay=0.01,
+            gradient_accumulation_steps=1,
+            warmup_steps=100,
+            max_grad_norm=1.0,
+            eval_steps=200,
+            save_steps=500,
+            logging_steps=50,
+            output_dir="outputs/checkpoints",
+            seed=42,
+            num_threads=2,
+        )
+    
+    kd: Optional[KDConfig] = None
+    if experiment_type in ["kd", "active_loop"]:
+        kd = KDConfig(
+            alpha=0.7,
+            temperature=4.0,
+        )
+    
+    active: Optional[ActiveLoopConfig] = None
+    if experiment_type == "active_loop":
+        active = ActiveLoopConfig(
+            unlabeled_pool_size=1000 if use_full_dataset else 100,
+            top_k_uncertain=50 if use_full_dataset else 20,
             uncertainty_metric="entropy",
             max_active_iterations=1,
         )
