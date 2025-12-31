@@ -10,6 +10,10 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# Add user site-packages to path (for --user installs)
+import site
+site.addsitedir(site.getusersitepackages())
+
 from src.config import default_medqa_experiment
 from src.training.supervised import SupervisedExperiment
 from src.utils import set_seed, save_experiment_results

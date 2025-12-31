@@ -351,16 +351,16 @@ class SupervisedExperiment(BaseExperiment):
                 f"This suggests the model is not learning properly."
             )
         
+        # Compute metrics
+        acc = accuracy(all_predictions, all_labels)
+        exp_correct = expected_correctness(all_probs, all_labels)
+        
         # Check if accuracy is at random level
         if acc < 0.3:  # Below 30% for 4 classes (random is 25%)
             self.logger.warning(
                 f"⚠ Very low accuracy ({acc:.4f}) - model may not be learning. "
                 f"Check: 1) Is loss decreasing? 2) Enough training data? 3) Enough epochs?"
             )
-        
-        # Compute metrics
-        acc = accuracy(all_predictions, all_labels)
-        exp_correct = expected_correctness(all_probs, all_labels)
         
         metrics = {
             "accuracy": acc,
