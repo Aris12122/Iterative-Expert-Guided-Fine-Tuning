@@ -55,3 +55,10 @@ data/
 Thumbs.db
 
 *.tar.xz
+
+# SSH keys and credentials
+ssh-key*/
+*.pem
+*.key
+*.pem.pub
+*.key.pub
