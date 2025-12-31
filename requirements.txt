@@ -1,5 +1,24 @@
+# Base requirements for Iterative Expert-Guided Fine-Tuning
+# 
+# For CPU-only training:
+#   pip install -r requirements.txt
+#
+# For GPU training (Yandex Cloud VM):
+#   1. Install PyTorch with CUDA: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+#   2. Install other dependencies: pip install -r requirements.txt
+#
+# For Yandex DataSphere:
+#   DataSphere usually has PyTorch pre-installed. If not:
+#   %pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+#   %pip install -r requirements.txt
+
+# Core ML libraries
 torch>=2.0.0
 transformers>=4.30.0
 datasets>=2.14.0
 numpy>=1.24.0
 tqdm>=4.65.0
+
+# Optional: for better performance
+# accelerate>=0.20.0  # For distributed training
+# tensorboard>=2.13.0  # For visualization

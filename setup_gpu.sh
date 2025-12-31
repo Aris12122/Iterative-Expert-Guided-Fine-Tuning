@@ -51,11 +51,7 @@ fi
 
 # Установка остальных зависимостей
 echo "Установка остальных зависимостей..."
-if [ -f "requirements-gpu.txt" ]; then
-    pip install -r requirements-gpu.txt
-else
-    pip install -r requirements.txt
-fi
+pip install -r requirements.txt
 
 # Установка основных библиотек
 echo "Установка основных библиотек..."

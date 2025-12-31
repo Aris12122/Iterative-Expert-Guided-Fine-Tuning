@@ -111,7 +111,7 @@ python3 scripts/train_supervised.py \
 
 1. **`DEPLOY_YANDEX_CLOUD.md`** — подробное руководство по развертыванию
 2. **`setup_gpu.sh`** — автоматический скрипт настройки окружения
-3. **`requirements-gpu.txt`** — зависимости для GPU
+3. **`requirements.txt`** — зависимости проекта (универсальный файл для CPU и GPU)
 4. **`improved_medqa_experiment()`** — функция с улучшенными моделями в `src/config.py`
 
 ## Оценка стоимости
